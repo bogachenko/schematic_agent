@@ -31,7 +31,7 @@ REF_RE = re.compile(r"^[A-ZА-Я]{1,3}[0-9]{1,4}$")
 # IEC/ANSI designations accepted only when classifying structured registers.
 # Examples: -QF1, -MAS, -BGS2, +LVD-BCF1, X110:1, 52, 52Y.
 _COMPONENT_TABLE_REF_RE = re.compile(
-    r"^[+\\-=~]?(?:[A-ZА-Я]{1,4}(?:[0-9]{0,4}|-[A-ZА-Я0-9]{1,8})"
+    r"^[+\-=~]?(?:[A-ZА-Я]{1,4}(?:[0-9]{0,4}|-[A-ZА-Я0-9]{1,8})"
     r"|[0-9]{1,3}[A-ZА-Я]{0,4})(?:[:/][A-ZА-Я0-9]{1,4})?$"
 )
 
