@@ -59,7 +59,7 @@ def _task(pdf: Path, mode: str, document_id: str) -> Task:
         payload=TaskPayload(
             pdf_path=str(pdf),
             document_id=document_id,
-            options=TaskOptions(mode=mode),
+            options=TaskOptions(mode=mode, use_vlm=False),
         ),
     )
 
