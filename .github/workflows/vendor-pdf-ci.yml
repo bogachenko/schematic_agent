@@ -40,13 +40,13 @@ jobs:
         run: |
           mkdir -p .ci-data "$TEST_RESULTS_DIR"
 
-          curl --fail --location --retry 3 --retry-delay 2 \
+          curl --fail --location --http1.1 --retry 3 --retry-all-errors --retry-delay 2 \
             --connect-timeout 20 --max-time 240 \
             --user-agent "schematic-agent-ci/1.0" \
             "https://productinfo.se.com/masterclad_mv_switchgear_ib/6055-40-27-kv-metal-clad-switchgear-instruction-bulletin/English/6055-40%20Masterclad%20MV%20Switchgear%20Indoor%20%28bookmap%29.pdf" \
             --output "$SCHNEIDER_PDF"
 
-          curl --fail --location --retry 3 --retry-delay 2 \
+          curl --fail --location --http1.1 --retry 3 --retry-all-errors --retry-delay 2 \
             --connect-timeout 20 --max-time 240 \
             --user-agent "schematic-agent-ci/1.0" \
             "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf" \
