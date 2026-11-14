@@ -35,6 +35,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[test]"
 
+      - name: Run complete pytest suite
+        run: |
+          python -m pytest -q \
+            --junitxml="$TEST_RESULTS_DIR/pytest-junit.xml" \
+            | tee "$TEST_RESULTS_DIR/pytest.log"
+
       - name: Download manufacturer reference PDFs
         shell: bash
         run: |
@@ -47,12 +53,12 @@ jobs:
             --output "$SCHNEIDER_PDF"
 
           if ! curl --fail --location --http1.1 --retry 1 --retry-all-errors --retry-delay 2 \
-            --connect-timeout 20 --max-time 90 \
+            --connect-timeout 15 --max-time 45 \
             --user-agent "schematic-agent-ci/1.0" \
             "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf" \
             --output "$EATON_PDF"; then
             rm -f "$EATON_PDF"
-            wget --timeout=45 --tries=2 --user-agent="schematic-agent-ci/1.0" \
+            wget --timeout=30 --tries=2 --user-agent="schematic-agent-ci/1.0" \
               --output-document="$EATON_PDF" \
               "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf"
           fi
@@ -68,12 +74,6 @@ jobs:
                   raise SystemExit(f"Invalid PDF download: {path} ({len(data)} bytes)")
               print(f"{path.name}: {len(data):,} bytes")
           PY
-
-      - name: Run complete pytest suite
-        run: |
-          python -m pytest -q \
-            --junitxml="$TEST_RESULTS_DIR/pytest-junit.xml" \
-            | tee "$TEST_RESULTS_DIR/pytest.log"
 
       - name: Run real-PDF parser smoke tests
         run: |
