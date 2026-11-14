@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      SCHNEIDER_PDF: ${{ runner.temp }}/vendor-pdfs/schneider-masterclad.pdf
-      EATON_PDF: ${{ runner.temp }}/vendor-pdfs/eaton-vacclad-w.pdf
-      TEST_RESULTS_DIR: ${{ runner.temp }}/test-results
+      SCHNEIDER_PDF: .ci-data/schneider-masterclad.pdf
+      EATON_PDF: .ci-data/eaton-vacclad-w.pdf
+      TEST_RESULTS_DIR: .ci-results
 
     steps:
       - name: Check out repository
@@ -38,7 +38,7 @@ jobs:
       - name: Download manufacturer reference PDFs
         shell: bash
         run: |
-          mkdir -p "$(dirname "$SCHNEIDER_PDF")" "$TEST_RESULTS_DIR"
+          mkdir -p .ci-data "$TEST_RESULTS_DIR"
 
           curl --fail --location --retry 3 --retry-delay 2 \
             --connect-timeout 20 --max-time 240 \
@@ -82,6 +82,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: vendor-pdf-ci-reports-${{ github.run_id }}
-          path: ${{ runner.temp }}/test-results/
+          path: .ci-results/
           if-no-files-found: warn
           retention-days: 14
