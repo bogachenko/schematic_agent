@@ -522,3 +522,28 @@ The project code is released under the MIT License. See `LICENSE`.
 > product. Replacing PyMuPDF with an alternative parser may be required for
 > some deployment scenarios. Review the AGPL obligations before public or
 > commercial use.
+
+## Cross-vendor PDF smoke tests
+
+The GitHub Actions workflow `.github/workflows/vendor-pdf-ci.yml` runs the
+complete pytest suite and then smoke-tests the parser against manufacturer
+reference schematics from Schneider Electric and Eaton. The PDFs are fetched
+from the manufacturers' public documentation sites during CI and are not
+stored in the repository.
+
+The smoke test locates each schematic page by its printed figure caption,
+then checks text extraction, vector primitives, geometry construction,
+component detection, netlist construction, and BOM processing. The run
+uploads the pytest log, JUnit report, and JSON smoke-test summary as a
+14-day workflow artifact.
+
+For a local run after downloading the same reference PDFs:
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest -q
+python scripts/smoke_test_vendor_pdfs.py \
+  --schneider /path/to/schneider-masterclad.pdf \
+  --eaton /path/to/eaton-vacclad-w.pdf \
+  --report /tmp/vendor-pdf-smoke.json
+```
