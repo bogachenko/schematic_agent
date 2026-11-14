@@ -1,0 +1,90 @@
+name: Python tests and vendor PDF smoke tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest + Schneider/Eaton PDF smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SCHNEIDER_PDF: ${{ runner.temp }}/vendor-pdfs/schneider-masterclad.pdf
+      EATON_PDF: ${{ runner.temp }}/vendor-pdfs/eaton-vacclad-w.pdf
+      TEST_RESULTS_DIR: ${{ runner.temp }}/test-results
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[test]"
+
+      - name: Download manufacturer reference PDFs
+        shell: bash
+        run: |
+          mkdir -p "$(dirname "$SCHNEIDER_PDF")" "$TEST_RESULTS_DIR"
+
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --connect-timeout 20 --max-time 240 \
+            --user-agent "schematic-agent-ci/1.0" \
+            "https://productinfo.se.com/masterclad_mv_switchgear_ib/6055-40-27-kv-metal-clad-switchgear-instruction-bulletin/English/6055-40%20Masterclad%20MV%20Switchgear%20Indoor%20%28bookmap%29.pdf" \
+            --output "$SCHNEIDER_PDF"
+
+          curl --fail --location --retry 3 --retry-delay 2 \
+            --connect-timeout 20 --max-time 240 \
+            --user-agent "schematic-agent-ci/1.0" \
+            "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf" \
+            --output "$EATON_PDF"
+
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          for name in ("SCHNEIDER_PDF", "EATON_PDF"):
+              path = Path(os.environ[name])
+              data = path.read_bytes()
+              if len(data) < 100_000 or not data.startswith(b"%PDF-"):
+                  raise SystemExit(f"Invalid PDF download: {path} ({len(data)} bytes)")
+              print(f"{path.name}: {len(data):,} bytes")
+          PY
+
+      - name: Run complete pytest suite
+        run: |
+          python -m pytest -q \
+            --junitxml="$TEST_RESULTS_DIR/pytest-junit.xml" \
+            | tee "$TEST_RESULTS_DIR/pytest.log"
+
+      - name: Run real-PDF parser smoke tests
+        run: |
+          python scripts/smoke_test_vendor_pdfs.py \
+            --schneider "$SCHNEIDER_PDF" \
+            --eaton "$EATON_PDF" \
+            --report "$TEST_RESULTS_DIR/vendor-pdf-smoke.json"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vendor-pdf-ci-reports-${{ github.run_id }}
+          path: ${{ runner.temp }}/test-results/
+          if-no-files-found: warn
+          retention-days: 14
