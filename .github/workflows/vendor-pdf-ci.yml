@@ -46,11 +46,16 @@ jobs:
             "https://productinfo.se.com/masterclad_mv_switchgear_ib/6055-40-27-kv-metal-clad-switchgear-instruction-bulletin/English/6055-40%20Masterclad%20MV%20Switchgear%20Indoor%20%28bookmap%29.pdf" \
             --output "$SCHNEIDER_PDF"
 
-          curl --fail --location --http1.1 --retry 3 --retry-all-errors --retry-delay 2 \
-            --connect-timeout 20 --max-time 240 \
+          if ! curl --fail --location --http1.1 --retry 1 --retry-all-errors --retry-delay 2 \
+            --connect-timeout 20 --max-time 90 \
             --user-agent "schematic-agent-ci/1.0" \
             "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf" \
-            --output "$EATON_PDF"
+            --output "$EATON_PDF"; then
+            rm -f "$EATON_PDF"
+            wget --timeout=45 --tries=2 --user-agent="schematic-agent-ci/1.0" \
+              --output-document="$EATON_PDF" \
+              "https://www.eaton.com/content/dam/eaton/products/design-guides---consultant-audience/eaton-vacclad-w-5-15kv-metal-clad-medium-voltage-switchgear-design-guide-dg022001en.pdf"
+          fi
 
           python - <<'PY'
           import os
