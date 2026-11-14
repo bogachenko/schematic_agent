@@ -28,6 +28,13 @@ from .contract import BomItem, Issue
 #: Позиционное обозначение: R1, VD12, KM3, XT1 (1–3 буквы + 1–4 цифры).
 REF_RE = re.compile(r"^[A-ZА-Я]{1,3}[0-9]{1,4}$")
 
+# IEC/ANSI designations accepted only when classifying structured registers.
+# Examples: -QF1, -MAS, -BGS2, +LVD-BCF1, X110:1, 52, 52Y.
+_COMPONENT_TABLE_REF_RE = re.compile(
+    r"^[+\\-=~]?(?:[A-ZА-Я]{1,4}(?:[0-9]{0,4}|-[A-ZА-Я0-9]{1,8})"
+    r"|[0-9]{1,3}[A-ZА-Я]{0,4})(?:[:/][A-ZА-Я0-9]{1,4})?$"
+)
+
 #: Всё, кроме латинских букв и цифр: удаляется при нормализации ключей
 #: сопоставления обозначений (пробелы, дефисы, точки и т.п.).
 _REF_NON_ALNUM_RE = re.compile(r"[^A-Z0-9]")
@@ -57,7 +64,7 @@ BOM_CSV_FIELDS: tuple[str, ...] = (
 
 #: Словари ключевых слов заголовков таблицы.
 _HEADER_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "ref": ("поз", "обозн", "design", "ref"),
+    "ref": ("поз", "обозн", "design", "ref", "tag"),
     "name": ("наимен", "name", "описан", "элемент", "description"),
     "quantity": (
         "кол", "количество", "кол-во", "колво", "qty", "шт",
@@ -153,6 +160,65 @@ def _header_columns(
         if "ref" in mapping and "name" in mapping:
             return row_index, mapping
     return None, {}
+
+
+def component_table_regions(
+    page: Any,
+) -> list[tuple[float, float, float, float]]:
+    """Возвращает области структурированных таблиц обозначений компонентов.
+
+    pdfplumber иногда объединяет почти всю страницу схемы в одну таблицу.
+    Такие области нельзя исключать из геометрии. Таблица считается реестром
+    компонентов только при наличии отдельной колонки обозначений, колонки
+    описания и минимум двух строк с разными обозначениями и описаниями.
+
+    Поддерживаются стандартные обозначения (QF1, R1), IEC-подобные
+    (-MAS, -BGS1, +LVD-BCF1) и ANSI function tags (52, 52Y).
+    """
+    regions: list[tuple[float, float, float, float]] = []
+    for table in getattr(page, "tables", []):
+        rows = _cell_rows(table)
+        if len(rows) < 3:
+            continue
+        header_row, mapping = _header_columns(rows)
+        ref_col = mapping.get("ref")
+        name_col = mapping.get("name")
+        if (
+            header_row is None
+            or ref_col is None
+            or name_col is None
+            or ref_col == name_col
+        ):
+            continue
+
+        refs: set[str] = set()
+        valid_rows = 0
+        for row_index, row in rows.items():
+            if row_index == header_row:
+                continue
+            ref = str(row.get(ref_col, "")).strip().upper()
+            name = str(row.get(name_col, "")).strip()
+            if (
+                not ref
+                or not name
+                or len(ref.lstrip("+-=~")) < 2
+                or not _COMPONENT_TABLE_REF_RE.fullmatch(ref)
+            ):
+                continue
+            refs.add(ref)
+            valid_rows += 1
+
+        if len(refs) < 2 or valid_rows < 2:
+            continue
+        regions.append(
+            (
+                float(table.x0),
+                float(table.y0),
+                float(table.x1),
+                float(table.y1),
+            )
+        )
+    return regions
 
 
 def detect_columns(

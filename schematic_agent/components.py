@@ -19,6 +19,7 @@ from typing import Any, Callable
 import yaml
 from pydantic import ValidationError
 
+from .bom import component_table_regions
 from .config import SYMBOLS_FILE_ENV, Tolerances, get_settings
 from .contract import Component, Issue, Pin, SymbolTemplateSpec
 from .geometry import GeometryResult, Segment, build_geometry
@@ -981,8 +982,8 @@ def load_templates() -> list[SymbolTemplate]:
 def _table_text_keys(
     page: PageExtraction,
 ) -> set[tuple[int, str, float, float]]:
-    """Ключи слов внутри таблиц BOM (это данные, а не обозначения УГО)."""
-    regions = [(table.x0, table.y0, table.x1, table.y1) for table in page.tables]
+    """Ключи слов внутри распознанных реестров компонентов."""
+    regions = component_table_regions(page)
     if not regions:
         return set()
     keys: set[tuple[int, str, float, float]] = set()
@@ -996,8 +997,8 @@ def _table_text_keys(
 
 
 def _table_primitive_indices(page: PageExtraction) -> set[int]:
-    """Индексы примитивов внутри таблиц перечня элементов."""
-    regions = [(table.x0, table.y0, table.x1, table.y1) for table in page.tables]
+    """Индексы примитивов внутри распознанных реестров компонентов."""
+    regions = component_table_regions(page)
     if not regions:
         return set()
     skip: set[int] = set()

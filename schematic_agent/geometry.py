@@ -19,6 +19,7 @@ import math
 import re
 from dataclasses import dataclass, field
 
+from .bom import component_table_regions
 from .config import Tolerances, get_settings
 from .contract import Node
 from .parser.pdf_extract import PdfExtraction, TextSpan, VectorPrimitive
@@ -438,11 +439,9 @@ def build_geometry(
     result = GeometryResult()
 
     for page in extraction.pages:
-        table_regions = [
-            (table.x0, table.y0, table.x1, table.y1) for table in page.tables
-        ]
-        # Геометрия внутри таблиц перечня элементов — не электрические цепи
-        # и не УГО.
+        table_regions = component_table_regions(page)
+        # Исключаем только распознанные реестры обозначений компонентов.
+        # Сводная таблица pdfplumber на всю страницу не должна гасить схему.
         skip_indices = {
             index
             for index, primitive in enumerate(page.primitives)
