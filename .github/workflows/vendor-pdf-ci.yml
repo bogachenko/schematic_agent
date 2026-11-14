@@ -37,6 +37,7 @@ jobs:
 
       - name: Run complete pytest suite
         run: |
+          mkdir -p "$TEST_RESULTS_DIR"
           python -m pytest -q \
             --junitxml="$TEST_RESULTS_DIR/pytest-junit.xml" \
             | tee "$TEST_RESULTS_DIR/pytest.log"
